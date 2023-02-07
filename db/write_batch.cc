@@ -56,6 +56,7 @@ Status WriteBatch::Iterate(Handler* handler) const {
       case kTypeValue:
         if (GetLengthPrefixedSlice(&input, &key) &&
             GetLengthPrefixedSlice(&input, &value)) {
+          // 插入 memTable 时，会调用 MemTableInserter::Put(key, value)
           handler->Put(key, value);
         } else {
           return Status::Corruption("bad WriteBatch Put");

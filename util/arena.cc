@@ -21,6 +21,7 @@ char* Arena::AllocateFallback(size_t bytes) {
   if (bytes > kBlockSize / 4) {
     // Object is more than a quarter of our block size.  Allocate it separately
     // to avoid wasting too much space in leftover bytes.
+    // 大于 1/4 block 单独分配一个 特定大小的 block，避免浪费
     char* result = AllocateNewBlock(bytes);
     return result;
   }

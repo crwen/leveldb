@@ -249,12 +249,14 @@ int SkipList<Key, Comparator>::RandomHeight() {
   return height;
 }
 
+// true if n->key < key
 template <typename Key, class Comparator>
 bool SkipList<Key, Comparator>::KeyIsAfterNode(const Key& key, Node* n) const {
   // null n is considered infinite
   return (n != nullptr) && (compare_(n->key, key) < 0);
 }
 
+// 找到第一个大于等于 key 的节点，并将前驱结点存储到 prev 中
 template <typename Key, class Comparator>
 typename SkipList<Key, Comparator>::Node*
 SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key,
@@ -264,9 +266,10 @@ SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key,
   while (true) {
     Node* next = x->Next(level);
     if (KeyIsAfterNode(key, next)) {
-      // Keep searching in this list
+      // Keep searching in this list  ; key > next->key
       x = next;
     } else {
+      // key <= next->key
       if (prev != nullptr) prev[level] = x;
       if (level == 0) {
         return next;
@@ -343,6 +346,7 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
 
   int height = RandomHeight();
   if (height > GetMaxHeight()) {
+    // 更新当前最大高度，并将新增高度的前驱结点设置为 head_
     for (int i = GetMaxHeight(); i < height; i++) {
       prev[i] = head_;
     }
@@ -356,6 +360,7 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
     max_height_.store(height, std::memory_order_relaxed);
   }
 
+  // 插入节点
   x = NewNode(key, height);
   for (int i = 0; i < height; i++) {
     // NoBarrier_SetNext() suffices since we will add a barrier when
