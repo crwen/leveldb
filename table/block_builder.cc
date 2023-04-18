@@ -88,6 +88,9 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   }
   const size_t non_shared = key.size() - shared;
 
+  //  ------------------------------------------------------------------
+  //  | shared len | non_shared len | val len | non_shared key | value |
+  //  ------------------------------------------------------------------
   // Add "<shared><non_shared><value_size>" to buffer_
   PutVarint32(&buffer_, shared);
   PutVarint32(&buffer_, non_shared);

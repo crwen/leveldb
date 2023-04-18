@@ -65,6 +65,7 @@ struct TableBuilder::Rep {
 TableBuilder::TableBuilder(const Options& options, WritableFile* file)
     : rep_(new Rep(options, file)) {
   if (rep_->filter_block != nullptr) {
+    // 如果开启了 filter policy，创建一个 filter block
     rep_->filter_block->StartBlock(0);
   }
 }
@@ -100,22 +101,28 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   }
 
   if (r->pending_index_entry) {
+    // data block 为空，即这是添加到当前 block 的第一个 key
     assert(r->data_block.empty());
+    // 找到一个 key ∈ [last_key, key)，用于在 index block 中快速查找
     r->options.comparator->FindShortestSeparator(&r->last_key, key);
     std::string handle_encoding;
     r->pending_handle.EncodeTo(&handle_encoding);
+    // 向 index block 添加 last key
     r->index_block.Add(r->last_key, Slice(handle_encoding));
     r->pending_index_entry = false;
   }
 
+  // 向 filter block 添加 key
   if (r->filter_block != nullptr) {
     r->filter_block->AddKey(key);
   }
 
+  // 更新 last_key 为 key，并插入 key, value
   r->last_key.assign(key.data(), key.size());
   r->num_entries++;
   r->data_block.Add(key, value);
 
+  // 如果当前 block 的大小大于阈值，flush
   const size_t estimated_block_size = r->data_block.CurrentSizeEstimate();
   if (estimated_block_size >= r->options.block_size) {
     Flush();
@@ -129,6 +136,7 @@ void TableBuilder::Flush() {
   if (r->data_block.empty()) return;
   assert(!r->pending_index_entry);
   WriteBlock(&r->data_block, &r->pending_handle);
+  // 重置标志，新建  filter block
   if (ok()) {
     r->pending_index_entry = true;
     r->status = r->file->Flush();
@@ -145,6 +153,7 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   //    crc: uint32
   assert(ok());
   Rep* r = rep_;
+  // 添加 restarts，并标记 block 为 finished
   Slice raw = block->Finish();
 
   Slice block_contents;
@@ -169,6 +178,7 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
       break;
     }
   }
+  // 写入文件，重置 block
   WriteRawBlock(block_contents, type, handle);
   r->compressed_output.clear();
   block->Reset();

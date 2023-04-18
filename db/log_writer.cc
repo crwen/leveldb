@@ -60,17 +60,26 @@ Status Writer::AddRecord(const Slice& slice) {
     const size_t fragment_length = (left < avail) ? left : avail;
 
     RecordType type;
+    // 所需容量大于等于block 剩余容量时（当前 block 放不下）才为 false
     const bool end = (left == fragment_length);
+    //   ------------------  ----------  ---------------
+    //   |  full |  first |  |  mid   |  | last | full |
+    //   ------------------  ----------  ---------------
     if (begin && end) {
+      // record 可以完整地放在一个 block 中
       type = kFullType;
     } else if (begin) {
+      // 跨 block 的第一部分
       type = kFirstType;
     } else if (end) {
+      // 跨 block 的最后一部分
       type = kLastType;
     } else {
+      // 跨 block 的中间部分
       type = kMiddleType;
     }
 
+    // 写入数据
     s = EmitPhysicalRecord(type, ptr, fragment_length);
     ptr += fragment_length;
     left -= fragment_length;
@@ -79,6 +88,9 @@ Status Writer::AddRecord(const Slice& slice) {
   return s;
 }
 
+//   ---------------------------
+//   | crc | len | type | data |
+//   --------------------------
 Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr,
                                   size_t length) {
   assert(length <= 0xffff);  // Must fit in two bytes
@@ -86,7 +98,7 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr,
 
   // Format the header
   char buf[kHeaderSize];
-  buf[4] = static_cast<char>(length & 0xff);
+  buf[4] = static_cast<char>(length & 0xff); // 低 8 位
   buf[5] = static_cast<char>(length >> 8);
   buf[6] = static_cast<char>(t);
 
